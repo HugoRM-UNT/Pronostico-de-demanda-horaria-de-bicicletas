@@ -1,0 +1,5 @@
+﻿params,std_test_score,rank_test_score,MAE
+"{'model__C': 50, 'model__epsilon': 0.3, 'model__kernel': 'rbf'}",23.03469638508196,1,80.4180951646056
+"{'model__C': 50, 'model__epsilon': 0.1, 'model__kernel': 'rbf'}",23.057873123324644,2,80.41869306100088
+"{'model__C': 10, 'model__epsilon': 0.1, 'model__kernel': 'rbf'}",22.953374206309753,3,98.92491552213107
+"{'model__C': 10, 'model__epsilon': 0.3, 'model__kernel': 'rbf'}",22.94195373970993,4,98.92786547555899

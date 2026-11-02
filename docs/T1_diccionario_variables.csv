@@ -1,0 +1,13 @@
+Variable,Definicion,Tipo,Unidad,Disponible antes de predecir,Decision
+datetime,Fecha y hora,datetime,hora,Si,Se descompone en hour/month/dayofweek/year; no se usa cruda
+season,Estacion (1 a 4),categorica,-,Si,Incluir
+holiday,Dia feriado,binaria,0/1,Si,Incluir
+workingday,Dia laborable,binaria,0/1,Si,Incluir
+weather,Clima (1 despejado a 4 severo),categorica,-,Solo como pronostico,Incluir
+temp,Temperatura,numerica,°C,Solo como pronostico,Incluir
+atemp,Sensacion termica,numerica,°C,Solo como pronostico,Incluir (revisar redundancia con temp)
+humidity,Humedad relativa,numerica,%,Solo como pronostico,Incluir
+windspeed,Velocidad del viento,numerica,-,Solo como pronostico,Incluir
+casual,Alquileres de usuarios casuales,numerica,bicis,No,EXCLUIR (fuga)
+registered,Alquileres de usuarios registrados,numerica,bicis,No,EXCLUIR (fuga)
+count,Total de alquileres,numerica,bicis,-,OBJETIVO (y)

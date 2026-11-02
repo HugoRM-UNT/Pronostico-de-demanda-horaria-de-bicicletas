@@ -1,0 +1,6 @@
+﻿params,std_test_score,rank_test_score,MAE
+"{'model__n_neighbors': 5, 'model__p': 1, 'model__weights': 'distance'}",15.672866530578561,1,88.24108187478456
+"{'model__n_neighbors': 5, 'model__p': 1, 'model__weights': 'uniform'}",15.252445707501257,2,90.42811853893866
+"{'model__n_neighbors': 5, 'model__p': 2, 'model__weights': 'distance'}",16.83149774093551,3,93.1732059521382
+"{'model__n_neighbors': 5, 'model__p': 2, 'model__weights': 'uniform'}",16.71103074524047,4,94.42905582356995
+"{'model__n_neighbors': 15, 'model__p': 1, 'model__weights': 'distance'}",16.635979842534855,5,94.50219491453653

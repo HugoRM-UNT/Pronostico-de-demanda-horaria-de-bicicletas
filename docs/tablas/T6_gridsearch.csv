@@ -1,0 +1,3 @@
+﻿Modelo,MAE CV óptimo,Mejores parámetros,Tiempo (s)
+KNN,88.24108187478456,"{'model__n_neighbors': 5, 'model__p': 1, 'model__weights': 'distance'}",13.73773930000607
+SVR,80.4180951646056,"{'model__C': 50, 'model__epsilon': 0.3, 'model__kernel': 'rbf'}",17.01107179999235

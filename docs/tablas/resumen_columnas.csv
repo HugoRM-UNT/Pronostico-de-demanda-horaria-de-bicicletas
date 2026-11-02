@@ -1,0 +1,13 @@
+﻿columna,dtype,no_nulos,nulos,%_nulos,únicos
+datetime,datetime64[ns],10886,0,0.0,10886
+season,int64,10886,0,0.0,4
+holiday,int64,10886,0,0.0,2
+workingday,int64,10886,0,0.0,2
+weather,int64,10886,0,0.0,4
+temp,float64,10886,0,0.0,49
+atemp,float64,10886,0,0.0,60
+humidity,int64,10886,0,0.0,89
+windspeed,float64,10886,0,0.0,28
+casual,int64,10886,0,0.0,309
+registered,int64,10886,0,0.0,731
+count,int64,10886,0,0.0,822

@@ -1,0 +1,12 @@
+﻿Chequeo,Cantidad,Porcentaje,Medida adoptada (propuesta)
+Valores nulos (todas las columnas),0,0.00 %,Sin nulos que tratar. Se mantiene SimpleImputer dentro del Pipeline como salvaguarda.
+Filas duplicadas,0,0.00 %,Ninguna acción.
+datetime repetido,0,0.00 %,Ninguna acción: una fila por hora.
+Horas ausentes dentro de días presentes,58,0.53 %,Se documenta. No se rellenan: los modelos no usan rezagos de count.
+Días calendario sin registros (entre primer y último dato),263,263 de 719 días,"Solo existen los días 1–19 de cada mes (los demás días los reserva Kaggle para test.csv, que no trae count). No se rellenan; el corte y los folds se hacen por orden cronológico."
+humidity = 0,22,0.20 %,"Valor físicamente imposible, concentrado en pocos días: se conserva y se declara como limitación (efecto mínimo)."
+windspeed = 0,1313,12.06 %,Posible dato no medido (no hay valores entre 0 y el mínimo positivo): se conserva sin imputar y se declara como limitación.
+count = 0,0,0.00 %,Plausible (madrugada): se conserva.
+"Valores negativos (humidity, windspeed, count)",0,0.00 %,Ninguna acción.
+"Categorías fuera de rango (season, weather)",0,0.00 %,Ninguna acción.
+casual + registered ≠ count (filas),0,0.00 %,Confirma que casual y registered son componentes de count: EXCLUIDAS por fuga.
