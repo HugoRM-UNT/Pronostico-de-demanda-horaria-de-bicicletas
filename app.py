@@ -117,7 +117,8 @@ if etapa == ETAPAS[0]:
 elif etapa == ETAPAS[1]:
     st.header("2. Objetivos y criterio de éxito")
     st.markdown("**Objetivo general.** Desarrollar y evaluar un sistema predictivo de la demanda "
-                "horaria de bicicletas con LinearRegression, KNeighborsRegressor y SVR, usando "
+                "horaria de bicicletas con LinearRegression, KNeighborsRegressor, SVR y "
+                "HistGradientBoosting, usando "
                 "validación temporal sin fuga de información y un test final reservado.")
     st.markdown("**Objetivos específicos**\n"
                 "1. *Análisis de datos:* identificar predictores disponibles y riesgos de calidad.\n"
@@ -303,8 +304,10 @@ elif etapa == ETAPAS[6]:
     st.code("ColumnTransformer([('numeric', SimpleImputer + StandardScaler),\n"
             "                 ('categorical', SimpleImputer + OneHotEncoder(handle_unknown='ignore'))])\n"
             "Pipeline(preprocesador, estimador)", language="python")
-    st.dataframe(pd.DataFrame({"Modelo": ["LinearRegression", "KNN", "SVR", "DummyRegressor"],
-                               "Uso": ["candidato", "candidato", "candidato", "referencia"]}))
+    st.dataframe(pd.DataFrame({"Modelo": ["LinearRegression", "KNN", "SVR",
+                                          "HistGradientBoosting", "DummyRegressor"],
+                               "Uso": ["candidato", "candidato", "candidato",
+                                       "candidato principal", "referencia"]}))
     st.info("`casual` y `registered` no aparecen en X. El DummyRegressor es referencia y no compite.")
 
 elif etapa == ETAPAS[7]:
@@ -330,7 +333,8 @@ elif etapa == ETAPAS[7]:
              "con variación alta sería menos confiable cuando cambia el periodo observado. KNN y SVR se "
              "ajustaron con rejillas pequeñas y razonables, ya que ampliar muchas combinaciones aumentaría "
              "el costo sin garantía de mejorar la generalización. LinearRegression se mantuvo como referencia "
-             "interpretable y DummyRegressor como línea base no competitiva. El ganador se determina con "
+             "interpretable, HistGradientBoosting captura relaciones no lineales entre hora, calendario y clima, "
+             "y DummyRegressor como línea base no competitiva. El ganador se determina con "
              "el MAE de validación, no con el resultado que eventualmente produzca el test. Por eso el "
              "test permanece completamente reservado hasta la etapa 13 y no influye en la elección ni en "
              "los hiperparámetros.")
@@ -408,7 +412,11 @@ elif etapa == ETAPAS[9]:
                 "atemp": atemp, "humidity": humidity, "windspeed": windspeed,
                 "count": 0,
             }])
-            entrada_x, _ = construir_X_y(entrada)
+            entrada_x, _ = construir_X_y(
+                modelado.agregar_features_modelado(
+                    entrada, exp["train"]["datetime"].min()
+                )
+            )
             valor = float(exp["model"].predict(entrada_x)[0])
             st.metric("Demanda estimada", f"{max(0, valor):.1f} bicicletas")
         except (TypeError, ValueError) as exc:

@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.dummy import DummyRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -25,7 +26,11 @@ RANDOM_STATE = 42
 # Streamlit Cloud suele tener límites estrictos de RAM/CPU. Un solo worker
 # evita que GridSearchCV cree procesos adicionales por cada sesión.
 N_JOBS = 1
-NUMERICAS = ["temp", "atemp", "humidity", "windspeed", "year"]
+NUMERICAS = [
+    "temp", "atemp", "humidity", "windspeed", "year", "days_since_start",
+    "hour_sin", "hour_cos", "dayofweek_sin", "dayofweek_cos",
+    "month_sin", "month_cos",
+]
 CATEGORICAS = ["season", "holiday", "workingday", "weather", "hour", "month", "dayofweek"]
 
 
@@ -44,23 +49,72 @@ def preprocesador() -> ColumnTransformer:
     ])
 
 
+def preprocesador_arbol() -> ColumnTransformer:
+    """Preprocesador denso para HistGradientBoostingRegressor."""
+    numeric = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+    ])
+    categorical = Pipeline([
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+        ("ordinal", OneHotEncoder(
+            handle_unknown="ignore", sparse_output=False, dtype=np.float32
+        )),
+    ])
+    return ColumnTransformer([
+        ("numeric", numeric, NUMERICAS),
+        ("categorical", categorical, CATEGORICAS),
+    ])
+
+
+def agregar_features_modelado(df: pd.DataFrame, inicio: pd.Timestamp) -> pd.DataFrame:
+    """Añade señales temporales disponibles al momento de predecir."""
+    result = agregar_calendario(df)
+    horas = result["hour"].astype(float)
+    dias = result["dayofweek"].astype(float)
+    meses = result["month"].astype(float)
+    result["days_since_start"] = (
+        (result["datetime"] - inicio).dt.total_seconds() / 86400
+    )
+    result["hour_sin"] = np.sin(2 * np.pi * horas / 24)
+    result["hour_cos"] = np.cos(2 * np.pi * horas / 24)
+    result["dayofweek_sin"] = np.sin(2 * np.pi * dias / 7)
+    result["dayofweek_cos"] = np.cos(2 * np.pi * dias / 7)
+    result["month_sin"] = np.sin(2 * np.pi * meses / 12)
+    result["month_cos"] = np.cos(2 * np.pi * meses / 12)
+    return result
+
+
 def crear_pipelines() -> dict[str, Pipeline]:
     modelos = {
         "LinearRegression": LinearRegression(),
         "KNN": KNeighborsRegressor(),
         "SVR": SVR(),
+        "HistGradientBoosting": Pipeline([
+            ("preprocessor", preprocesador_arbol()),
+            ("model", HistGradientBoostingRegressor(
+                max_iter=350,
+                learning_rate=0.05,
+                max_leaf_nodes=63,
+                l2_regularization=2.0,
+                random_state=RANDOM_STATE,
+            )),
+        ]),
         "DummyRegressor": DummyRegressor(strategy="mean"),
     }
-    return {
+    pipelines = {
         nombre: Pipeline([("preprocessor", preprocesador()), ("model", modelo)])
         for nombre, modelo in modelos.items()
+        if nombre != "HistGradientBoosting"
     }
+    pipelines["HistGradientBoosting"] = modelos["HistGradientBoosting"]
+    return pipelines
 
 
 def particionar(df: pd.DataFrame):
     train, test = corte_temporal(df)
-    x_train, y_train = construir_X_y(train)
-    x_test, y_test = construir_X_y(test)
+    inicio = train["datetime"].min()
+    x_train, y_train = construir_X_y(agregar_features_modelado(train, inicio))
+    x_test, y_test = construir_X_y(agregar_features_modelado(test, inicio))
     return x_train, x_test, y_train, y_test, train, test
 
 
@@ -170,7 +224,7 @@ def evaluar(experimento: dict[str, Any]) -> dict[str, Any]:
     """Ajusta el ganador una vez al train y abre el test solo para esta evaluación."""
     model = experimento["model"]
     model.fit(experimento["x_train"], experimento["y_train"])
-    pred = model.predict(experimento["x_test"])
+    pred = np.clip(model.predict(experimento["x_test"]), 0, None)
     y = experimento["y_test"]
     metrics = {
         "MAE": mean_absolute_error(y, pred),
@@ -203,7 +257,9 @@ def cinco_predicciones(experimento: dict[str, Any], evaluacion: dict[str, Any]) 
     nuevos["datetime"] = fechas
     nuevos["count"] = np.nan
     nuevos = agregar_calendario(nuevos)
-    x_nuevos, _ = construir_X_y(nuevos.assign(count=0))
+    x_nuevos, _ = construir_X_y(
+        agregar_features_modelado(nuevos.assign(count=0), experimento["train"]["datetime"].min())
+    )
     return nuevos[["datetime", "weather", "temp", "humidity"]].assign(
-        prediccion=evaluacion["model"].predict(x_nuevos)
+        prediccion=np.clip(evaluacion["model"].predict(x_nuevos), 0, None)
     )
