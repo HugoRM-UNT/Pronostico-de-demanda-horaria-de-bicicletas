@@ -40,6 +40,11 @@ python src/generar_evidencias_fase3.py   # genera T4-T9 y el informe de modelado
 streamlit run app.py
 ```
 
+En Streamlit, la primera entrada a las etapas de entrenamiento puede tardar porque
+ejecuta la validación temporal y el GridSearch. El ajuste usa un solo worker para
+evitar que el límite de memoria del deploy cree procesos adicionales; el resultado
+queda cacheado durante la sesión.
+
 ## Estado de la Fase 2 (completa)
 Hecho con el `train.csv` real (10 886 × 12): T2, T3, 7 gráficos interpretados, 5 hallazgos, 5 folds de
 `TimeSeriesSplit`, pantallas 5 y 6 de la app y notebook `02_fase2.ipynb` ejecutado (con salidas).

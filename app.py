@@ -81,7 +81,8 @@ def ejecutar_modelado(df):
 
 @st.cache_data(show_spinner="Evaluando una vez sobre el test reservado...")
 def ejecutar_evaluacion(df):
-    experimento = modelado.entrenar_experimento(df)
+    # Reutiliza el experimento cacheado; no vuelve a ejecutar CV ni GridSearch.
+    experimento = ejecutar_modelado(df)
     return modelado.evaluar(experimento)
 
 

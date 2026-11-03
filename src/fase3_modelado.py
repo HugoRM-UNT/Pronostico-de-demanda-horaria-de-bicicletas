@@ -22,6 +22,9 @@ from fase2_eda import corte_temporal
 
 N_SPLITS = 5
 RANDOM_STATE = 42
+# Streamlit Cloud suele tener límites estrictos de RAM/CPU. Un solo worker
+# evita que GridSearchCV cree procesos adicionales por cada sesión.
+N_JOBS = 1
 NUMERICAS = ["temp", "atemp", "humidity", "windspeed", "year"]
 CATEGORICAS = ["season", "holiday", "workingday", "weather", "hour", "month", "dayofweek"]
 
@@ -113,7 +116,7 @@ def ajustar_hiperparametros(x_train: pd.DataFrame, y_train: pd.Series) -> dict[s
         inicio = time.perf_counter()
         search = GridSearchCV(
             base[nombre], grid, cv=cv, scoring="neg_mean_absolute_error",
-            n_jobs=-1, refit=True, return_train_score=False,
+            n_jobs=N_JOBS, pre_dispatch=N_JOBS, refit=True, return_train_score=False,
         )
         search.fit(x_train, y_train)
         buscadores[nombre] = search

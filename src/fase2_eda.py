@@ -42,6 +42,13 @@ def validar_csv(df: pd.DataFrame) -> None:
             "Usa el archivo train.csv de la competencia Bike Sharing Demand "
             "(test.csv no trae count)."
         )
+    if len(df) <= N_SPLITS + 1:
+        raise ValueError(
+            f"El CSV solo tiene {len(df)} filas; se necesitan más de {N_SPLITS + 1} "
+            "para la validación temporal de 5 folds."
+        )
+    if df["datetime"].isna().any():
+        raise ValueError("La columna 'datetime' contiene fechas inválidas o vacías.")
 
 
 # --------------------------------------------------------------------------- #
