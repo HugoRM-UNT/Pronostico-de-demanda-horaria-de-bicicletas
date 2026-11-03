@@ -35,7 +35,11 @@ def main():
     for nombre, top in exp["grid_top"].items():
         top.to_csv(TAB / f"T6_top5_{nombre}.csv", index=False, encoding="utf-8-sig")
     exp["selection"].to_csv(TAB / "T7_seleccion.csv", index=False, encoding="utf-8-sig")
-    pd.DataFrame([ev["metrics"]]).assign(Modelo=exp["winner"]).to_csv(
+    pd.DataFrame([ev["metrics"]]).assign(
+        Modelo=exp["winner"],
+        MAE_horas_pico=ev["peak_mae"],
+        ratio_pico_global=ev["peak_mae"] / ev["metrics"]["MAE"],
+    ).to_csv(
         TAB / "T8_metricas_test.csv", index=False, encoding="utf-8-sig"
     )
     ev["by_hour"].to_csv(TAB / "T8_mae_por_hora.csv", index=False, encoding="utf-8-sig")
@@ -66,7 +70,8 @@ def main():
 Se reservó el 20 % final del archivo como test temporal. La selección se hizo únicamente
 con el 80 % inicial mediante `TimeSeriesSplit(n_splits=5)`. Las imputaciones, el escalado
 y la codificación se ajustaron dentro de cada `Pipeline`. `casual` y `registered` fueron
-excluidas por fuga directa.
+excluidas por fuga directa. Se añadieron variables cíclicas, `days_since_start` y la
+interacción categórica `workingday_hour`.
 
 ## Selección previa al test
 
@@ -76,23 +81,29 @@ una bicicleta de error y porque la distribución combina horas de baja demanda c
 Se compararon los mismos cinco folds cronológicos para todos los modelos, de modo que cada
 candidato enfrentara exactamente la misma dificultad temporal. La desviación del MAE complementa
 el promedio: un valor bajo con variación alta sería menos confiable cuando cambia el periodo
-observado. KNN y SVR se ajustaron con rejillas pequeñas y razonables, ya que ampliar muchas
-combinaciones aumentaría el costo sin garantía de mejorar la generalización. LinearRegression se
-conservó como referencia interpretable y DummyRegressor como línea base no competitiva. El ganador
-se determina con el MAE de validación, no con el resultado que eventualmente produzca el test.
-Por eso el test permanece completamente reservado hasta la evaluación final y no influye en la
-elección ni en los hiperparámetros.
+observado. KNN y SVR se ajustaron con `GridSearchCV`; sus rejillas incluyen valores interiores
+y de borde (`n_neighbors` = 3, 5, 10, 15, 30; `C` = 10, 50, 100, 300 y varios `gamma`).
+KNN y SVR transforman el objetivo con `log1p` y vuelven a la escala original para reducir el
+efecto de la asimetría de `count`. LinearRegression se conservó como referencia interpretable y
+DummyRegressor como línea base no competitiva. El ganador se determina por menor MAE CV.
+Solo si al menos dos candidatos quedan a ≤1 % del mejor MAE se declara empate práctico y se
+desempata por menor desviación; después se prioriza LinearRegression, SVR y KNN. El test
+permanece completamente reservado hasta la evaluación final.
 
 ## Evaluación final
 
 En el test reservado, el modelo obtuvo MAE = **{metrics['MAE']:.2f}**, RMSE = **{metrics['RMSE']:.2f}**
 y R² = **{metrics['R²']:.3f}**. El MAE es la métrica principal porque expresa directamente
-el error promedio en bicicletas.
+el error promedio en bicicletas. El MAE en horas pico (7–8 y 17–19) fue **{ev['peak_mae']:.2f}**,
+es decir, **{ev['peak_mae'] / metrics['MAE']:.2f}×** el MAE global; el criterio de éxito
+debe considerarse {'cumplido' if ev['peak_mae'] <= 2 * metrics['MAE'] else 'no cumplido'}.
 
-El error cambia por hora y condición meteorológica; por ello se entregan las tablas
+El criterio acordado exige que el MAE en horas pico no supere dos veces el MAE global. El error
+cambia por hora y condición meteorológica; por ello se entregan las tablas
 `T8_mae_por_hora.csv` y `T8_mae_por_clima.csv`. El resultado no garantiza producción:
 el conjunto tiene días ausentes, el clima usado es observado y el tramo final exige
-extrapolar el nivel interanual.
+extrapolar el nivel interanual. HistGradientBoosting queda como mejora futura y no participa
+en la selección exigida por la guía.
 """
     (RAIZ / "docs" / "informe_fase3_modelado.md").write_text(report, encoding="utf-8")
     print(f"Ganador: {exp['winner']}")

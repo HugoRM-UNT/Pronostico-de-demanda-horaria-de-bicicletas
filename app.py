@@ -117,8 +117,7 @@ if etapa == ETAPAS[0]:
 elif etapa == ETAPAS[1]:
     st.header("2. Objetivos y criterio de éxito")
     st.markdown("**Objetivo general.** Desarrollar y evaluar un sistema predictivo de la demanda "
-                "horaria de bicicletas con LinearRegression, KNeighborsRegressor, SVR y "
-                "HistGradientBoosting, usando "
+                "horaria de bicicletas con LinearRegression, KNeighborsRegressor y SVR, usando "
                 "validación temporal sin fuga de información y un test final reservado.")
     st.markdown("**Objetivos específicos**\n"
                 "1. *Análisis de datos:* identificar predictores disponibles y riesgos de calidad.\n"
@@ -305,10 +304,11 @@ elif etapa == ETAPAS[6]:
             "                 ('categorical', SimpleImputer + OneHotEncoder(handle_unknown='ignore'))])\n"
             "Pipeline(preprocesador, estimador)", language="python")
     st.dataframe(pd.DataFrame({"Modelo": ["LinearRegression", "KNN", "SVR",
-                                          "HistGradientBoosting", "DummyRegressor"],
+                                          "DummyRegressor"],
                                "Uso": ["candidato", "candidato", "candidato",
-                                       "candidato principal", "referencia"]}))
-    st.info("`casual` y `registered` no aparecen en X. El DummyRegressor es referencia y no compite.")
+                                       "referencia"]}))
+    st.info("`casual` y `registered` no aparecen en X. `workingday_hour` captura la interacción "
+            "entre hora y día laborable. El DummyRegressor es referencia y no compite.")
 
 elif etapa == ETAPAS[7]:
     st.header("10–12. Validación, GridSearch y selección")
@@ -316,7 +316,13 @@ elif etapa == ETAPAS[7]:
     if df is None:
         st.error("Falta `train.csv`.")
         st.stop()
-    exp = ejecutar_modelado(df)
+    if "experimento" not in st.session_state:
+        st.info("Pulsa el botón para ejecutar CV temporal y GridSearchCV. El test permanece cerrado.")
+    if st.button("Entrenar modelos", type="primary"):
+        st.session_state["experimento"] = ejecutar_modelado(df)
+    exp = st.session_state.get("experimento")
+    if exp is None:
+        st.stop()
     st.subheader("T5 · TimeSeriesSplit(n_splits=5)")
     st.dataframe(exp["cv"].round(3), hide_index=True)
     st.subheader("T6 · GridSearchCV")
@@ -333,8 +339,9 @@ elif etapa == ETAPAS[7]:
              "con variación alta sería menos confiable cuando cambia el periodo observado. KNN y SVR se "
              "ajustaron con rejillas pequeñas y razonables, ya que ampliar muchas combinaciones aumentaría "
              "el costo sin garantía de mejorar la generalización. LinearRegression se mantuvo como referencia "
-             "interpretable, HistGradientBoosting captura relaciones no lineales entre hora, calendario y clima, "
-             "y DummyRegressor como línea base no competitiva. El ganador se determina con "
+             "interpretable y DummyRegressor como línea base no competitiva. El ganador se determina con "
+             "MAE; si varios resultados quedan a ≤1 % del mejor, se desempata por menor desviación y "
+             "después por simplicidad (LinearRegression, SVR, KNN). El ganador se determina con "
              "el MAE de validación, no con el resultado que eventualmente produzca el test. Por eso el "
              "test permanece completamente reservado hasta la etapa 13 y no influye en la elección ni en "
              "los hiperparámetros.")
@@ -346,7 +353,11 @@ elif etapa == ETAPAS[8]:
     if df is None:
         st.error("Falta `train.csv`.")
         st.stop()
-    evaluacion = ejecutar_evaluacion(df)
+    exp = st.session_state.get("experimento")
+    if exp is None:
+        st.info("Primero entrena los modelos en la etapa 10–12.")
+        st.stop()
+    evaluacion = modelado.evaluar(exp)
     st.subheader("T8 · Métricas en test")
     cols = st.columns(3)
     for col, (nombre, valor) in zip(cols, evaluacion["metrics"].items()):
@@ -361,6 +372,13 @@ elif etapa == ETAPAS[8]:
     plt.close(fig)
     st.write("**MAE por hora**")
     st.dataframe(evaluacion["by_hour"].round(3), hide_index=True)
+    ratio_pico = evaluacion["peak_mae"] / evaluacion["metrics"]["MAE"]
+    if ratio_pico <= 2:
+        st.success(f"Criterio de horas pico cumplido: MAE pico = {evaluacion['peak_mae']:.2f} "
+                   f"({ratio_pico:.2f}× el MAE global).")
+    else:
+        st.error(f"Criterio de horas pico no cumplido: MAE pico = {evaluacion['peak_mae']:.2f} "
+                 f"({ratio_pico:.2f}× el MAE global). No desplegar.")
     st.write("**MAE por condición meteorológica**")
     st.dataframe(evaluacion["by_weather"].round(3), hide_index=True)
     st.write("**Primeras 10 observaciones: valor real, predicción y residual**")
@@ -380,13 +398,16 @@ elif etapa == ETAPAS[9]:
     if df is None:
         st.error("Falta `train.csv`.")
         st.stop()
-    exp = ejecutar_modelado(df)
+    exp = st.session_state.get("experimento")
+    if exp is None:
+        st.info("Primero entrena los modelos en la etapa 10–12.")
+        st.stop()
     exp["model"].fit(exp["x_train"], exp["y_train"])
     evaluacion = {"model": exp["model"]}
     st.subheader("T9 · Escenarios futuros")
     st.dataframe(modelado.cinco_predicciones(exp, evaluacion).round(2), hide_index=True)
-    st.caption("Son cinco horas posteriores al último registro de entrenamiento, con las últimas "
-               "condiciones meteorológicas disponibles. No tienen `count` real y no se usan como prueba.")
+    st.caption("Son cinco escenarios futuros distintos (hora, día laborable y clima); no tienen "
+               "`count` real y no se usan como prueba.")
     st.subheader("Predicción interactiva")
     st.caption("El formulario usa el mismo pipeline entrenado y no reentrena ni consulta el test.")
     with st.form("formulario_prediccion"):
@@ -426,5 +447,6 @@ elif etapa == ETAPAS[9]:
                 "- MAE es la métrica principal porque es interpretable en bicicletas.\n"
                 "- El error debe revisarse por hora y clima, no solo con un promedio global.\n"
                 "- El modelo no debe considerarse productivo sin pronósticos meteorológicos y validación reciente.\n"
-                "- Mejoras: incorporar rezagos disponibles en producción, probar modelos con tendencia temporal "
+                "- Mejoras: incorporar rezagos disponibles en producción y probar HistGradientBoosting "
+                "como mejora futura, además de modelos con tendencia temporal "
                 "regularizada y evaluar periódicamente el drift.")

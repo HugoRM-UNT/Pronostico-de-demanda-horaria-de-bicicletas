@@ -1,5 +1,6 @@
 ﻿params,std_test_score,rank_test_score,MAE
-"{'model__C': 50, 'model__epsilon': 0.3, 'model__kernel': 'rbf'}",23.03469638508196,1,80.4180951646056
-"{'model__C': 50, 'model__epsilon': 0.1, 'model__kernel': 'rbf'}",23.057873123324644,2,80.41869306100088
-"{'model__C': 10, 'model__epsilon': 0.1, 'model__kernel': 'rbf'}",22.953374206309753,3,98.92491552213107
-"{'model__C': 10, 'model__epsilon': 0.3, 'model__kernel': 'rbf'}",22.94195373970993,4,98.92786547555899
+"{'model__regressor__C': 10, 'model__regressor__epsilon': 0.1, 'model__regressor__gamma': 'auto', 'model__regressor__kernel': 'rbf'}",15.031648647691512,1,45.007992666035534
+"{'model__regressor__C': 10, 'model__regressor__epsilon': 0.1, 'model__regressor__gamma': 0.01, 'model__regressor__kernel': 'rbf'}",16.150067560347228,2,45.423270698495514
+"{'model__regressor__C': 50, 'model__regressor__epsilon': 0.1, 'model__regressor__gamma': 'auto', 'model__regressor__kernel': 'rbf'}",9.774684896494914,3,52.683997728947745
+"{'model__regressor__C': 50, 'model__regressor__epsilon': 0.1, 'model__regressor__gamma': 0.01, 'model__regressor__kernel': 'rbf'}",9.852487866020047,4,55.123832546796486
+"{'model__regressor__C': 100, 'model__regressor__epsilon': 0.1, 'model__regressor__gamma': 'auto', 'model__regressor__kernel': 'rbf'}",11.517844131899539,5,60.834340030719375

@@ -1,6 +1,6 @@
 ﻿params,std_test_score,rank_test_score,MAE
-"{'model__n_neighbors': 5, 'model__p': 1, 'model__weights': 'distance'}",15.672866530578561,1,88.24108187478456
-"{'model__n_neighbors': 5, 'model__p': 1, 'model__weights': 'uniform'}",15.252445707501257,2,90.42811853893866
-"{'model__n_neighbors': 5, 'model__p': 2, 'model__weights': 'distance'}",16.83149774093551,3,93.1732059521382
-"{'model__n_neighbors': 5, 'model__p': 2, 'model__weights': 'uniform'}",16.71103074524047,4,94.42905582356995
-"{'model__n_neighbors': 15, 'model__p': 1, 'model__weights': 'distance'}",16.635979842534855,5,94.50219491453653
+"{'model__regressor__n_neighbors': 3, 'model__regressor__p': 1, 'model__regressor__weights': 'distance'}",19.63141296003639,1,62.14392490974213
+"{'model__regressor__n_neighbors': 3, 'model__regressor__p': 1, 'model__regressor__weights': 'uniform'}",19.48899217180048,2,63.37323307315734
+"{'model__regressor__n_neighbors': 3, 'model__regressor__p': 2, 'model__regressor__weights': 'distance'}",18.89764306878296,3,64.21030407655687
+"{'model__regressor__n_neighbors': 5, 'model__regressor__p': 1, 'model__regressor__weights': 'distance'}",20.22509759940075,4,64.24289920069532
+"{'model__regressor__n_neighbors': 3, 'model__regressor__p': 2, 'model__regressor__weights': 'uniform'}",18.65541586639529,5,65.09552374381117

@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.dummy import DummyRegressor
-from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -17,6 +16,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.svm import SVR
+from sklearn.compose import TransformedTargetRegressor
 
 from fase1_xy import agregar_calendario, construir_X_y
 from fase2_eda import corte_temporal
@@ -31,7 +31,10 @@ NUMERICAS = [
     "hour_sin", "hour_cos", "dayofweek_sin", "dayofweek_cos",
     "month_sin", "month_cos",
 ]
-CATEGORICAS = ["season", "holiday", "workingday", "weather", "hour", "month", "dayofweek"]
+CATEGORICAS = [
+    "season", "holiday", "workingday", "weather", "hour", "month",
+    "dayofweek", "workingday_hour",
+]
 
 
 def preprocesador() -> ColumnTransformer:
@@ -42,23 +45,6 @@ def preprocesador() -> ColumnTransformer:
     categorical = Pipeline([
         ("imputer", SimpleImputer(strategy="most_frequent")),
         ("onehot", OneHotEncoder(handle_unknown="ignore")),
-    ])
-    return ColumnTransformer([
-        ("numeric", numeric, NUMERICAS),
-        ("categorical", categorical, CATEGORICAS),
-    ])
-
-
-def preprocesador_arbol() -> ColumnTransformer:
-    """Preprocesador denso para HistGradientBoostingRegressor."""
-    numeric = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-    ])
-    categorical = Pipeline([
-        ("imputer", SimpleImputer(strategy="most_frequent")),
-        ("ordinal", OneHotEncoder(
-            handle_unknown="ignore", sparse_output=False, dtype=np.float32
-        )),
     ])
     return ColumnTransformer([
         ("numeric", numeric, NUMERICAS),
@@ -81,33 +67,27 @@ def agregar_features_modelado(df: pd.DataFrame, inicio: pd.Timestamp) -> pd.Data
     result["dayofweek_cos"] = np.cos(2 * np.pi * dias / 7)
     result["month_sin"] = np.sin(2 * np.pi * meses / 12)
     result["month_cos"] = np.cos(2 * np.pi * meses / 12)
+    result["workingday_hour"] = (
+        result["workingday"].astype(str) + "_" + result["hour"].astype(str)
+    )
     return result
 
 
 def crear_pipelines() -> dict[str, Pipeline]:
     modelos = {
         "LinearRegression": LinearRegression(),
-        "KNN": KNeighborsRegressor(),
-        "SVR": SVR(),
-        "HistGradientBoosting": Pipeline([
-            ("preprocessor", preprocesador_arbol()),
-            ("model", HistGradientBoostingRegressor(
-                max_iter=350,
-                learning_rate=0.05,
-                max_leaf_nodes=63,
-                l2_regularization=2.0,
-                random_state=RANDOM_STATE,
-            )),
-        ]),
+        "KNN": TransformedTargetRegressor(
+            regressor=KNeighborsRegressor(), func=np.log1p, inverse_func=np.expm1
+        ),
+        "SVR": TransformedTargetRegressor(
+            regressor=SVR(), func=np.log1p, inverse_func=np.expm1
+        ),
         "DummyRegressor": DummyRegressor(strategy="mean"),
     }
-    pipelines = {
+    return {
         nombre: Pipeline([("preprocessor", preprocesador()), ("model", modelo)])
         for nombre, modelo in modelos.items()
-        if nombre != "HistGradientBoosting"
     }
-    pipelines["HistGradientBoosting"] = modelos["HistGradientBoosting"]
-    return pipelines
 
 
 def particionar(df: pd.DataFrame):
@@ -153,14 +133,15 @@ def ajustar_hiperparametros(x_train: pd.DataFrame, y_train: pd.Series) -> dict[s
     base = crear_pipelines()
     grids = {
         "KNN": {
-            "model__n_neighbors": [5, 15, 30],
-            "model__weights": ["uniform", "distance"],
-            "model__p": [1, 2],
+            "model__regressor__n_neighbors": [3, 5, 10, 15, 30],
+            "model__regressor__weights": ["uniform", "distance"],
+            "model__regressor__p": [1, 2],
         },
         "SVR": {
-            "model__C": [10, 50],
-            "model__epsilon": [0.1, 0.3],
-            "model__kernel": ["rbf"],
+            "model__regressor__C": [10, 50, 100, 300],
+            "model__regressor__gamma": ["scale", "auto", 0.01, 0.1],
+            "model__regressor__epsilon": [0.1],
+            "model__regressor__kernel": ["rbf"],
         },
     }
     resultados = []
@@ -200,12 +181,28 @@ def entrenar_experimento(df: pd.DataFrame) -> dict[str, Any]:
         on="Modelo",
         how="outer",
     ).sort_values("MAE medio", na_position="last")
-    comparacion = cv[["Modelo", "MAE medio"]].copy()
+    comparacion = cv[["Modelo", "MAE medio", "MAE desviación"]].copy()
     for nombre in ("KNN", "SVR"):
         comparacion.loc[comparacion["Modelo"] == nombre, "MAE medio"] = (
             grids["tabla"].loc[grids["tabla"]["Modelo"] == nombre, "MAE CV óptimo"].iloc[0]
         )
-    ganador = comparacion.sort_values("MAE medio").iloc[0]["Modelo"]
+    mejor_mae = comparacion["MAE medio"].min()
+    empate_practico = comparacion["MAE medio"] <= mejor_mae * 1.01
+    prioridad = {"LinearRegression": 0, "SVR": 1, "KNN": 2, "DummyRegressor": 3}
+    if empate_practico.sum() < 2:
+        empate_practico[:] = False
+    comparacion["Empate práctico (≤1 %)"] = empate_practico
+    comparacion["Prioridad desempate"] = comparacion["Modelo"].map(prioridad)
+    if empate_practico.any():
+        orden = comparacion.assign(
+            _orden=np.where(empate_practico, 0, 1)
+        ).sort_values(
+            ["_orden", "MAE desviación", "Prioridad desempate"],
+            ascending=[True, True, True],
+        )
+    else:
+        orden = comparacion.sort_values("MAE medio")
+    ganador = orden.iloc[0]["Modelo"]
     modelo = (
         grids["searches"][ganador].best_estimator_
         if ganador in grids["searches"]
@@ -215,7 +212,7 @@ def entrenar_experimento(df: pd.DataFrame) -> dict[str, Any]:
         "x_train": x_train, "x_test": x_test, "y_train": y_train, "y_test": y_test,
         "train": train, "test": test, "cv": cv, "grids": grids["tabla"],
         "grid_top": grids["top"],
-        "comparison": combinada, "selection": comparacion.sort_values("MAE medio"),
+        "comparison": combinada, "selection": orden.drop(columns="_orden", errors="ignore"),
         "winner": ganador, "model": modelo,
     }
 
@@ -242,24 +239,49 @@ def evaluar(experimento: dict[str, Any]) -> dict[str, Any]:
     by_hour = detail.groupby("hour", observed=False)[["count", "prediccion"]].apply(
         lambda g: pd.Series({"n": len(g), "MAE": mean_absolute_error(g["count"], g["prediccion"])})
     ).reset_index()
+    peak = detail[detail["hour"].isin([7, 8, 17, 18, 19])]
+    peak_mae = mean_absolute_error(peak["count"], peak["prediccion"])
     by_weather = detail.groupby("weather", observed=False)[["count", "prediccion"]].apply(
         lambda g: pd.Series({"n": len(g), "MAE": mean_absolute_error(g["count"], g["prediccion"])})
     ).reset_index()
     return {"model": model, "pred": pred, "metrics": metrics, "detail": detail,
-            "by_hour": by_hour, "by_weather": by_weather}
+            "by_hour": by_hour, "by_weather": by_weather, "peak_mae": peak_mae}
 
 
 def cinco_predicciones(experimento: dict[str, Any], evaluacion: dict[str, Any]) -> pd.DataFrame:
-    """Genera cinco escenarios futuros; no se usan para medir exactitud."""
-    ultimo = experimento["train"].iloc[-1].copy()
-    fechas = pd.date_range(ultimo["datetime"] + pd.Timedelta(hours=1), periods=5, freq="h")
-    nuevos = pd.DataFrame([ultimo.to_dict()] * 5)
-    nuevos["datetime"] = fechas
-    nuevos["count"] = np.nan
-    nuevos = agregar_calendario(nuevos)
+    """Genera cinco escenarios futuros diferenciados; no miden exactitud."""
+    train = experimento["train"]
+    ultimo = train["datetime"].max()
+    especificaciones = [
+        ("Laborable 08:00, soleado", 0, 8, 1, 1),
+        ("Domingo 14:00, soleado", 6, 14, 0, 1),
+        ("Lluvia 18:00", 2, 18, 1, 3),
+        ("Madrugada 04:00", 0, 4, 0, 1),
+        ("Laborable 17:00, soleado", 2, 17, 1, 1),
+    ]
+    filas = []
+    for escenario, weekday, hour, workingday, weather in especificaciones:
+        dias = (weekday - ultimo.weekday()) % 7 or 7
+        fecha = (ultimo + pd.Timedelta(days=dias)).replace(
+            hour=hour, minute=0, second=0
+        )
+        candidatos = train[
+            (train["datetime"].dt.weekday == weekday)
+            & (train["datetime"].dt.hour == hour)
+            & (train["workingday"] == workingday)
+            & (train["weather"] == weather)
+        ]
+        fila = (candidatos.iloc[-1] if not candidatos.empty else train.iloc[-1]).copy()
+        fila["datetime"] = fecha
+        fila["workingday"] = workingday
+        fila["weather"] = weather
+        fila["count"] = np.nan
+        fila["escenario"] = escenario
+        filas.append(fila)
+    nuevos = agregar_calendario(pd.DataFrame(filas))
     x_nuevos, _ = construir_X_y(
         agregar_features_modelado(nuevos.assign(count=0), experimento["train"]["datetime"].min())
     )
-    return nuevos[["datetime", "weather", "temp", "humidity"]].assign(
+    return nuevos[["escenario", "datetime", "workingday", "weather", "temp", "humidity"]].assign(
         prediccion=np.clip(evaluacion["model"].predict(x_nuevos), 0, None)
     )

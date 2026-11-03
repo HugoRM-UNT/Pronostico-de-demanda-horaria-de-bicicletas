@@ -6,8 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 RAIZ = Path(__file__).resolve().parent.parent
-DATA_PATH = RAIZ / "data" / "train.csv"
-FALLBACK_DATA_PATH = RAIZ / "train.csv"
+DATA_PATH = RAIZ / "train.csv"
 TARGET = "count"
 COLS_FUGA = ["casual", "registered"]          # suman count -> prohibidas
 COLS_CALENDARIO = ["hour", "month", "dayofweek", "year"]
@@ -16,7 +15,7 @@ COLS_CALENDARIO = ["hour", "month", "dayofweek", "year"]
 def cargar_datos(path=None) -> pd.DataFrame:
     """Lee train.csv y lo ordena cronológicamente (requisito de validación temporal)."""
     if path is None:
-        path = DATA_PATH if DATA_PATH.exists() else FALLBACK_DATA_PATH
+        path = DATA_PATH
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(
@@ -27,15 +26,15 @@ def cargar_datos(path=None) -> pd.DataFrame:
         raise ValueError(
             f"El archivo encontrado en {path} no es el train.csv de Bike Sharing Demand: "
             "falta la columna 'datetime'. Descarga el train.csv correcto de Kaggle y "
-            "colócalo en data/train.csv."
+            "colócalo en la raíz del proyecto como train.csv."
         )
     df["datetime"] = pd.to_datetime(df["datetime"])
     return df.sort_values("datetime").reset_index(drop=True)
 
 
 def ruta_datos() -> Path:
-    """Devuelve la ubicación documentada o alternativa del CSV."""
-    return DATA_PATH if DATA_PATH.exists() else FALLBACK_DATA_PATH
+    """Devuelve la ubicación documentada del CSV, si está disponible."""
+    return DATA_PATH
 
 
 def agregar_calendario(df: pd.DataFrame) -> pd.DataFrame:

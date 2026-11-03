@@ -9,13 +9,13 @@ Sistemas Inteligentes y Machine Learning · Trabajo aplicativo (regresión)
 Grupo04_Streamlit/
 ├── app.py                      # App Streamlit (etapas 1–16)
 ├── requirements.txt
-├── data/                       # Aquí va train.csv (ver data/LEEME_DATOS.md)
+├── data/                       # Instrucciones de descarga (ver data/LEEME_DATOS.md)
 ├── docs/
 │   ├── etapa1_2_problema_objetivos.md
 │   ├── etapa3_dataset_diccionario.md
 │   ├── etapa4_X_y.md
 │   ├── informe_fase2_etapas5_6.md   # texto del informe (etapas 5-6) con cifras reales
-│   ├── figuras/                 # 8 gráficos en PNG
+│   ├── figuras/                 # 9 gráficos en PNG
 │   ├── tablas/                  # T2, T3, folds, describe, resumen, hallazgos (CSV)
 │   └── T1_diccionario_variables.csv
 ├── src/fase1_xy.py             # Carga, variables de calendario, X e y, verificaciones
@@ -40,23 +40,21 @@ python src/generar_evidencias_fase3.py   # genera T4-T9 y el informe de modelado
 streamlit run app.py
 ```
 
-En Streamlit, la primera entrada a las etapas de entrenamiento puede tardar porque
-ejecuta la validación temporal y el GridSearch. El ajuste usa un solo worker para
-evitar que el límite de memoria del deploy cree procesos adicionales; el resultado
-queda cacheado durante la sesión.
+En Streamlit, la etapa 10–12 muestra un botón explícito para entrenar. La ejecución puede
+tardar porque realiza la validación temporal y el GridSearch. El ajuste usa un solo worker
+para evitar que el límite de memoria del deploy cree procesos adicionales; el resultado
+queda guardado durante la sesión.
 
 ## Estado de la Fase 2 (completa)
-Hecho con el `train.csv` real (10 886 × 12): T2, T3, 7 gráficos interpretados, 5 hallazgos, 5 folds de
+Hecho con el `train.csv` real (10 886 × 12): T2, T3, 9 gráficos interpretados, 5 hallazgos, 5 folds de
 `TimeSeriesSplit`, pantallas 5 y 6 de la app y notebook `02_fase2.ipynb` ejecutado (con salidas).
 El texto para el informe está en `docs/informe_fase2_etapas5_6.md`. La app también incluye las
 etapas 7–16; estas deben ejecutarse después de colocar el CSV correcto.
 
-## Pendiente del grupo antes de la Fase 3
-- [ ] Acordar el criterio de éxito (etapa 2) ANTES de entrenar y escribirlo en el informe.
-- [ ] Completar nombres de integrantes.
-- [ ] Completar la ficha del dataset: fecha de consulta y licencia/reglas de Kaggle.
-- [ ] Revisar y reescribir con sus palabras las interpretaciones; confirmar las decisiones del informe.
-- [ ] Tomar las capturas de la app (pantallas 5 y 6) con `streamlit run app.py`.
+## Revisión final del grupo
+- [ ] Completar nombres de integrantes y fecha de consulta del dataset en la ficha.
+- [ ] Citar las reglas/licencia de Kaggle y revisar las interpretaciones con sus palabras.
+- [ ] Tomar las capturas de la app con `streamlit run app.py`.
 - [ ] Ejecutar las etapas 7–16 y exportar T4–T9 con el CSV Bike Sharing correcto.
 
 ## Reglas metodológicas (no romper)
@@ -64,5 +62,5 @@ etapas 7–16; estas deben ejecutarse después de colocar el CSV correcto.
 - Holdout temporal del tramo final + `TimeSeriesSplit(n_splits=5)`; nada de mezcla aleatoria.
 - Preprocesamiento solo dentro de `Pipeline`; el test se usa una sola vez.
 - Los resultados deben salir del CSV descargado; no inventar cifras.
-- El archivo debe ser el `train.csv` de Bike Sharing Demand y contener `datetime`, `casual`,
+- El archivo debe ser el `train.csv` de la raíz, de Bike Sharing Demand, y contener `datetime`, `casual`,
   `registered` y `count`. El archivo actualmente ubicado en la raíz debe verificarse antes de usarlo.

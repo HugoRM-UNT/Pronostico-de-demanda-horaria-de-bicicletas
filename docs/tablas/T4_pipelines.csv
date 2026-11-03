@@ -1,4 +1,4 @@
 ﻿Paso,Descripción
 Preprocesamiento,"Imputación, escalado y OneHotEncoder dentro de cada Pipeline"
 Validación,"TimeSeriesSplit(n_splits=5), sin barajar"
-Selección,Menor MAE CV: LinearRegression
+Selección,Menor MAE CV: SVR
